@@ -388,35 +388,42 @@ for (int dst_y = 0; dst_y < h_new; dst_y++) {
 	uchar* new_img_row_ptr = new_Img.ptr<uchar>(dst_y);
 	for (int dst_x = 0; dst_x < w_new; dst_x++) {
 		
-		double src_x = (dst_x + 0.5) * (static_cast<double>(w_old)  / w_new) - 0.5;
+		// Mapping the destination pixel pos to teh source 
+		// as the dst image is bigger than the src
+		// we calculate the offset using the following for x and y
+		// these are in decimals ie it just tells the offset from the current pixel from the src to dest new pixel 
+		double src_x = (dst_x + 0.5) * (static_cast<double>(w_old)  / w_new) - 0.5; 
 		double src_y = (dst_y + 0.5) * (static_cast<double>(h_old) / h_new) - 0.5;
 
+		// we get the actual pixel where the offsets lands
 		int x0 = static_cast<int>(std::floor(src_x)) - 1;
 		int y0 = static_cast<int>(std::floor(src_y)) - 1;
 
+		// calculate the actual distance between the actual pixel and the offset value
 		double fx = src_x - std::floor(src_x);
 		double fy = src_y - std::floor(src_y);
 		
 		double tmp[4] = { 0.0};
 		
+		// We loop through a 4x4 grid of pixels and do the bicubic interpolation
 		for (int r = 0; r < 4; r++) {
 			double p[4];
-			int py = std::clamp(r + y0, 0, h_old - 1);
+			int py = std::clamp(r + y0, 0, h_old - 1); //handels the edge/border case the edge pixels are clammped from 0 to the old height of the src
 			uchar* row_ptr = Converted_image.ptr<uchar>(py);
 			
 			for (int c = 0; c < 4; c++) {
-				int px = std::clamp(c + x0, 0, w_old - 1);
+				int px = std::clamp(c + x0, 0, w_old - 1); //same clampping here
 				
 				p[c] = row_ptr[px];
 
 			}
-			tmp[r] = CubicInterp(p, fx);
+			tmp[r] = CubicInterp(p, fx); //once we get the 4 pixels we horizontally interpolate it using Cubic interpolation
 			
 			
 		}
 
-		double final_val = CubicInterp(tmp, fy);
-		new_img_row_ptr[dst_x] = cv::saturate_cast<uchar>(final_val);
+		double final_val = CubicInterp(tmp, fy); // once we get all the horizontal interpolation value we do vertical interpolation
+		new_img_row_ptr[dst_x] = cv::saturate_cast<uchar>(final_val); // save the interpolated grid in the new image
 
 	}
 
