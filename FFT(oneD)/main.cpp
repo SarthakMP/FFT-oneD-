@@ -81,9 +81,17 @@ double CubicInterp(double p[4], double x) {
 	return (((a * x + b) * x + c) * x + d);
 }
 
+inline static const double sinc(double t) {
+	return std::sin(t) / t;
+}
+
+inline static const double LanczosFunc(double x,double a = 1) {
+	return std::fabs(x)<a ? sinc(x * M_PI) * sinc(x * M_PI / a) : x==0 ? 1 : 0;
+}
+
  int main() {
 
-#pragma region OpenCV/CvPlot Setup
+	#pragma region OpenCV/CvPlot Setup
 
 	cv::namedWindow("Signal", cv::WINDOW_AUTOSIZE); 
 
@@ -98,13 +106,13 @@ double CubicInterp(double p[4], double x) {
 	//auto axes1 = CvPlot::makePlotAxes();
 	//axes1.create<CvPlot::Series>(x, y, "-g");
 	//CvPlot::show("Signal", axes1);
-#pragma endregion 
+	#pragma endregion 
 	
 	//std::vector< std::complex<double>> fft(N);
 	//fft = FFT(input);
 	
 	
-#pragma region DFT
+	#pragma region DFT
 		/*
 	for (int k = 0; k < x.size(); k++) {
 		std::complex<double> sum = 0;
@@ -121,145 +129,178 @@ double CubicInterp(double p[4], double x) {
 
 #pragma endregion 
 
-#pragma region Interpolation
-#define N_Point 61
-#pragma region Making Point
+	#pragma region Interpolation
+	#define N_Point 100
+	#pragma region Making Point
 	
 	
-	cv::Mat canvas =cv::Mat::zeros(500, 500, CV_8UC3);
-	auto Axes = CvPlot::makePlotAxes();
-	Axes.xLabel("X");
-	Axes.yLabel("Y");
+		cv::Mat canvas =cv::Mat::zeros(500, 500, CV_8UC3);
+		auto Axes = CvPlot::makePlotAxes();
+		Axes.xLabel("X");
+		Axes.yLabel("Y");
 	
-	Axes.setXLim(std::pair<double,double>(- 30, 30));
+		//Axes.setXLim(std::pair<double,double>(-1, 1));
 
-	std::vector<cv::Point2d> Points;
-	Points.reserve(N_Point);
+		std::vector<cv::Point2d> Points;
+		Points.reserve(N_Point);
 
-	for (int i = -30; i < N_Point-30; i++) {
-		double x = static_cast<double>(i);
-		double y = BellCurve(x);
+		for (double i = 0; i < N_Point; i+=0.5) {
+			double x = (i*M_PI/2);
+			double y = 5*std::sin(x/10) + 2*std::cos(x/2);
 
-		Points.emplace_back(x, y);
-	}
-
-
-	cv::Rect roiPoints(0, 0, 500, 500);
-	//Axes.create<CvPlot::Series>(Points,"o r");
-	
-	
-
-#pragma endregion
-
-#pragma region Nearest_interpolation
-	/*
-	std::vector<cv::Point2d > New_Points;
-	New_Points.reserve(N_Point *2);
-	for (int i = 1; i < N_Point; i++) {
-		cv::Point2d Point1(Points[i - 1]), Point2(Points[i]);
-		
-		New_Points.push_back(Point1);
-
-		double half = (Point1.x + Point2.x) / 2;
-		cv::Point2d mid1(half,Point1.y), mid2(half, Point2.y);
-		New_Points.push_back(mid1);
-		New_Points.push_back(mid2);
-
-		New_Points.push_back(Point2);
-	}
-	
-	Axes.create<CvPlot::Series>(New_Points, "-r");
-	*/
-
-#pragma endregion
-
-#pragma region Linear_interpolation
-	
-	/*
-	std::vector<cv::Point2d > New_Points;
-	New_Points.reserve(N_Point * 4);
-	for (int i = 1; i < N_Point; ++i) {
-		cv::Point2d Point1(Points[i-1]), Point2(Points[i]);
-		
-		New_Points.push_back(Point1);
-		
-		for (double j = Points[i - 1].x; j < Points[i].x; j+=0.25) {
-			
-			double y = Point1.y + (Point2.y - Point1.y) * (j - Point1.x) / (Point2.x - Point1.x);
-			cv::Point2d tmp_points(j, y);
-			New_Points.push_back(tmp_points);
-		
+			Points.emplace_back(x, y);
 		}
-		New_Points.push_back(Point2);
 
-	}
+
+		cv::Rect roiPoints(0, 0, 500, 500);
+		/*
+		Axes.create<CvPlot::Series>(Points,"-r");
+		
+		cv::Mat plot1 = Axes.render(roiPoints.height, roiPoints.width);
+		plot1.copyTo(canvas(roiPoints));
+
+		cv::imshow("Signal", canvas);
+		*/
+		
+
+	#pragma endregion
+
+	#pragma region Nearest_interpolation
+		/*
+		std::vector<cv::Point2d > New_Points;
+		New_Points.reserve(N_Point *2);
+		for (int i = 1; i < N_Point; i++) {
+			cv::Point2d Point1(Points[i - 1]), Point2(Points[i]);
+		
+			New_Points.push_back(Point1);
+
+			double half = (Point1.x + Point2.x) / 2;
+			cv::Point2d mid1(half,Point1.y), mid2(half, Point2.y);
+			New_Points.push_back(mid1);
+			New_Points.push_back(mid2);
+
+			New_Points.push_back(Point2);
+		}
 	
-	Axes.create<CvPlot::Series>(New_Points, "-r");
+		Axes.create<CvPlot::Series>(New_Points, "-r");
+		*/
+
+	#pragma endregion
+
+	#pragma region Linear_interpolation
 	
-	*/
-#pragma endregion
-
-#pragma region Cubic_interpolation
-	/*
-	std::vector<cv::Point2d> new_points;
-	new_points.reserve(Points.size() * 8);
-	int count = 0;
-	new_points.emplace_back(Points[0].x, Points[0].y);
-	for (int i = 1; i < Points.size()-2; i++) {
-
-		double x0 = Points[i - 1].x;
-		double x1 = Points[i ].x;
-		double x2 = Points[i + 1].x;
-		double x3 = Points[i + 2].x;
-
-		double y0 = Points[i - 1].y;
-		double y1 = Points[i].y;
-		double y2 = Points[i + 1].y;
-		double y3 = Points[i + 2].y;
-
-		new_points.emplace_back(Points[i].x, Points[i].y);
-		double fx = x2 - x1;
-		if (fx <= 0) continue;
-
-		for (double t = 0; t < 1.0; t += 0.2) {
+		/*
+		std::vector<cv::Point2d > New_Points;
+		New_Points.reserve(N_Point * 4);
+		for (int i = 1; i < N_Point; ++i) {
+			cv::Point2d Point1(Points[i-1]), Point2(Points[i]);
+		
+			New_Points.push_back(Point1);
+		
+			for (double j = Points[i - 1].x; j < Points[i].x; j+=0.25) {
 			
-			double ex_y[4] = { y0, y1,y2 ,y3 };
+				double y = Point1.y + (Point2.y - Point1.y) * (j - Point1.x) / (Point2.x - Point1.x);
+				cv::Point2d tmp_points(j, y);
+				New_Points.push_back(tmp_points);
+		
+			}
+			New_Points.push_back(Point2);
+
+		}
+	
+		Axes.create<CvPlot::Series>(New_Points, "-r");
+	
+		*/
+	#pragma endregion
+
+	#pragma region Cubic_interpolation
+		/*
+		std::vector<cv::Point2d> new_points;
+		new_points.reserve(Points.size() * 8);
+		int count = 0;
+		new_points.emplace_back(Points[0].x, Points[0].y);
+		for (int i = 1; i < Points.size()-2; i++) {
+
+			double x0 = Points[i - 1].x;
+			double x1 = Points[i ].x;
+			double x2 = Points[i + 1].x;
+			double x3 = Points[i + 2].x;
+
+			double y0 = Points[i - 1].y;
+			double y1 = Points[i].y;
+			double y2 = Points[i + 1].y;
+			double y3 = Points[i + 2].y;
+
+			new_points.emplace_back(Points[i].x, Points[i].y);
+			double fx = x2 - x1;
+			if (fx <= 0) continue;
+
+			for (double t = 0; t < 1.0; t += 0.2) {
+			
+				double ex_y[4] = { y0, y1,y2 ,y3 };
 				
-			double interp_y = CubicInterp(ex_y, t);
+				double interp_y = CubicInterp(ex_y, t);
 			
-			double interp_x = x1 + t * fx;
-			new_points.emplace_back(interp_x, interp_y);
+				double interp_x = x1 + t * fx;
+				new_points.emplace_back(interp_x, interp_y);
+
+			}
+
 
 		}
 
-
-	}
-
-	if (!Points.empty()) {
-		new_points.emplace_back(Points.back().x, Points.back().y);
+		if (!Points.empty()) {
+			new_points.emplace_back(Points.back().x, Points.back().y);
 		
-	}
+		}
 
-	std::cout << "Count: " << count;
+		std::cout << "Count: " << count;
 	
-	Axes.create<CvPlot::Series>(new_points, "-r");
-	*/
+		Axes.create<CvPlot::Series>(new_points, "-r");
+		*/
 
-	/*
-	cv::Mat plot = Axes.render(roiPoints.height, roiPoints.width);
-	plot.copyTo(canvas(roiPoints));
-	cv::imshow("Signal", plot);
-	*/
-#pragma endregion
+		/*
+		cv::Mat plot = Axes.render(roiPoints.height, roiPoints.width);
+		plot.copyTo(canvas(roiPoints));
+		cv::imshow("Signal", plot);
+		*/
+	#pragma endregion
+	
+	#pragma region Lanczos_Interpolation
+		/*
+			Lanczos function
 
-#pragma endregion
+			where	sinc(x) => sin(x*pi)/(x*pi) 
+							OR
+					sinc(t) => sin(t)/t
 
-	/*
-	cv::Mat plot1 = Axes.render(roiPoints.height, roiPoints.width);
-	plot1.copyTo(canvas(roiPoints));
+			f(x) = sinc(x)*sinc(x/a) ; {-a<x<a} 
+					0				 ; other
+		*/
+		
+		std::vector<double> y_outs,x_in;
+		y_outs.reserve(N_Point);
+		for (double x = -1; x < 1; x+=0.01)
+		{	
+			x_in.push_back(x);
+			y_outs.push_back(LanczosFunc(x, 1));
+		}
 
-	cv::imshow("Signal", canvas);
-	*/
+		
+		Axes.create<CvPlot::Series>(x_in,y_outs,"-r");
+
+		cv::Mat plot1 = Axes.render(roiPoints.height, roiPoints.width);
+		plot1.copyTo(canvas(roiPoints));
+
+		cv::imshow("Signal", canvas);
+		
+					
+	#pragma endregion
+
+
+	#pragma endregion
+
+	
 
 	/*
 	double max_mag = 0;
@@ -371,71 +412,94 @@ double CubicInterp(double p[4], double x) {
 #pragma endregion
 */
 	
+
 	#pragma region Bicubic
-
-//cv::Mat image = cv::imread("./Images/baby.png");
-cv::Mat Converted_image= cv::imread("./Images/baby.png", cv::IMREAD_GRAYSCALE);;
-
-int h_old = Converted_image.rows, w_old = Converted_image.cols;
-
-cv::Mat new_Img = cv::Mat::zeros(h_old * 2, w_old*2, CV_8UC1);
-
-int h_new = h_old * 2, w_new = w_old * 2;
+	/*
+	//cv::Mat image = cv::imread("./Images/baby.png");
+	cv::Mat Converted_image= cv::imread("./Images/checkerboard.png", cv::IMREAD_GRAYSCALE);
 
 
-
-for (int dst_y = 0; dst_y < h_new; dst_y++) {
-	uchar* new_img_row_ptr = new_Img.ptr<uchar>(dst_y);
-	for (int dst_x = 0; dst_x < w_new; dst_x++) {
-		
-		// Mapping the destination pixel pos to teh source 
-		// as the dst image is bigger than the src
-		// we calculate the offset using the following for x and y
-		// these are in decimals ie it just tells the offset from the current pixel from the src to dest new pixel 
-		double src_x = (dst_x + 0.5) * (static_cast<double>(w_old)  / w_new) - 0.5; 
-		double src_y = (dst_y + 0.5) * (static_cast<double>(h_old) / h_new) - 0.5;
-
-		// we get the actual pixel where the offsets lands
-		int x0 = static_cast<int>(std::floor(src_x)) - 1;
-		int y0 = static_cast<int>(std::floor(src_y)) - 1;
-
-		// calculate the actual distance between the actual pixel and the offset value
-		double fx = src_x - std::floor(src_x);
-		double fy = src_y - std::floor(src_y);
-		
-		double tmp[4] = { 0.0};
-		
-		// We loop through a 4x4 grid of pixels and do the bicubic interpolation
-		for (int r = 0; r < 4; r++) {
-			double p[4];
-			int py = std::clamp(r + y0, 0, h_old - 1); //handels the edge/border case the edge pixels are clammped from 0 to the old height of the src
-			uchar* row_ptr = Converted_image.ptr<uchar>(py);
-			
-			for (int c = 0; c < 4; c++) {
-				int px = std::clamp(c + x0, 0, w_old - 1); //same clampping here
-				
-				p[c] = row_ptr[px];
-
-			}
-			tmp[r] = CubicInterp(p, fx); //once we get the 4 pixels we horizontally interpolate it using Cubic interpolation
-			
-			
-		}
-
-		double final_val = CubicInterp(tmp, fy); // once we get all the horizontal interpolation value we do vertical interpolation
-		new_img_row_ptr[dst_x] = cv::saturate_cast<uchar>(final_val); // save the interpolated grid in the new image
-
+	if (Converted_image.empty()) {
+		std::cerr << "Unable to load the image" << std::endl;
 	}
 
-}
-	
-cv::imshow("Signal", new_Img);
+	int h_old = Converted_image.rows, w_old = Converted_image.cols;
 
-#pragma endregion
+	cv::Mat new_Img = cv::Mat::zeros(h_old * 2, w_old*2, CV_8UC1);
+
+	int h_new = h_old * 2, w_new = w_old * 2;
+
+
+
+	for (int dst_y = 0; dst_y < h_new; dst_y++) {
+		uchar* new_img_row_ptr = new_Img.ptr<uchar>(dst_y);
+		for (int dst_x = 0; dst_x < w_new; dst_x++) {
+		
+			// Mapping the destination pixel pos to teh source 
+			// as the dst image is bigger than the src
+			// we calculate the offset using the following for x and y
+			// these are in decimals ie it just tells the offset from the current pixel from the src to dest new pixel 
+			double src_x = (dst_x + 0.5) * (static_cast<double>(w_old)  / w_new) - 0.5; 
+			double src_y = (dst_y + 0.5) * (static_cast<double>(h_old) / h_new) - 0.5;
+
+			// we get the actual pixel where the offsets lands
+			int x0 = static_cast<int>(std::floor(src_x)) - 1;
+			int y0 = static_cast<int>(std::floor(src_y)) - 1;
+
+			// calculate the actual distance between the actual pixel and the offset value
+			double fx = src_x - std::floor(src_x);
+			double fy = src_y - std::floor(src_y);
+		
+			double tmp[4] = { 0.0};
+		
+			// We loop through a 4x4 grid of pixels and do the bicubic interpolation
+			for (int r = 0; r < 4; r++) {
+				double p[4];
+				int py = std::clamp(r + y0, 0, h_old - 1); //handels the edge/border case the edge pixels are clammped from 0 to the old height of the src
+				uchar* row_ptr = Converted_image.ptr<uchar>(py);
+			
+				for (int c = 0; c < 4; c++) {
+					int px = std::clamp(c + x0, 0, w_old - 1); //same clampping here
+				
+					p[c] = row_ptr[px];
+
+				}
+				tmp[r] = CubicInterp(p, fx); //once we get the 4 pixels we horizontally interpolate it using Cubic interpolation
+			
+			
+			}
+
+			double final_val = CubicInterp(tmp, fy); // once we get all the horizontal interpolation value we do vertical interpolation
+			new_img_row_ptr[dst_x] = cv::saturate_cast<uchar>(final_val); // save the interpolated grid in the new image
+
+		}
+
+	}
+	
+	cv::imshow("Signal", new_Img);
+	cv::imwrite("./Images/x2Bicubic_checkerboard.png", new_Img);
+	*/
+	#pragma endregion
 
 	
 
+	#pragma region Checkboard
+	/*
+	cv::Mat checkerboard = cv::Mat::zeros(100, 100, CV_8UC1);
+
+
+	for (int i = 0; i < 100; i++)
+		for (int j = 0; j < 100; j++)
+			checkerboard .at<uchar>(i, j) = (((i / 10) + (j / 10)) % 2 == 0) ? 0 : 255;
+
+	cv::imwrite("./Images/checkerboard.png", checkerboard);
+	cv::imshow("Signal", checkerboard);
+	*/
+	#pragma endregion
+
 	
+	
+
 	cv::waitKey(0);
 	return 0;
 }

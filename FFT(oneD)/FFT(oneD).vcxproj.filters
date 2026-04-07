@@ -29,5 +29,11 @@
     <Image Include="Images\Image1.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="Images\checkerboard.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Images\x2Bicubic_checkerboard.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
