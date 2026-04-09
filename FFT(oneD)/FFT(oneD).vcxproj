@@ -138,6 +138,11 @@
     <Image Include="Images\Image1.png" />
     <Image Include="Images\x2Bicubic_checkerboard.png" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FourierTransforms.h" />
+    <ClInclude Include="Interpolation_1D.h" />
+    <ClInclude Include="Interpolation_2D.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
