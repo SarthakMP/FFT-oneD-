@@ -3,17 +3,17 @@
 #define M_PI 3.14159265358979323846
 
 #pragma once
-class Interpolation_1D 
-{	
-	public:
-		Interpolation_1D();
-		
-		double CubicInterp(double p[4], double x);
-		double BellCurve(double in);
-		std::vector<cv::Point2d> NearestInterp(std::vector< cv::Point2d>&Points, int _NPoints);
-		std::vector<cv::Point2d> LinearInterp(std::vector< cv::Point2d>&Points, int _NPoints);
-		std::vector<cv::Point2d> LinearInterp(std::vector< cv::Point2d>&Points, int _NPoints);
-	
+class Interpolation_1D
+{
+public:
+	Interpolation_1D() {}
+	/*
+	double CubicInterp(double p[4], double x);
+	double BellCurve(double in);
+	std::vector<cv::Point2d> NearestInterp(std::vector< cv::Point2d>&Points, int _NPoints);
+	std::vector<cv::Point2d> LinearInterp(std::vector< cv::Point2d>&Points, int _NPoints);
+	std::vector<cv::Point2d> LinearInterp(std::vector< cv::Point2d>&Points, int _NPoints);*/
+
 	//Helper Function
 	double CubicInterp(double p[4], double x) {
 
@@ -31,9 +31,9 @@ class Interpolation_1D
 
 
 #pragma region Nearest_interpolation
-	
 
-	std::vector<cv::Point2d> NearestInterp(std::vector< cv::Point2d>& Points,int _NPoints) {
+
+	std::vector<cv::Point2d> NearestInterp(std::vector< cv::Point2d>& Points, int _NPoints) {
 		std::vector<cv::Point2d > New_Points;
 		New_Points.reserve(_NPoints * 2);
 		for (int i = 1; i < _NPoints; i++) {
@@ -76,13 +76,13 @@ class Interpolation_1D
 		}
 		return New_Points;
 	}
-	
 
-	
+
+
 #pragma endregion
 
 #pragma region Cubic_interpolation
-	
+
 	std::vector<cv::Point2d> CubicInterp(std::vector< cv::Point2d>& Points, int _NPoints) {
 		std::vector<cv::Point2d> new_points;
 		new_points.reserve(Points.size() * 8);
@@ -124,19 +124,21 @@ class Interpolation_1D
 
 		return new_points;
 	}
-	
+
 
 #pragma endregion
 
 #pragma region Lanczos_Interpolation
-	inline static const double sinc(double t) {
+	inline static  double sinc(double t) {
+		if (std::abs(t) < 1e-8) return 1.0;
 		return std::sin(t) / t;
 	}
 
-	inline static const double LanczosFunc(double x, double a = 1) {
-		return std::fabs(x) < a ? sinc(x * M_PI) * sinc(x * M_PI / a) : x == 0 ? 1 : 0;
+	inline static double LanczosFunc(double x, double a) {
+		if (std::abs(x) >= a) return 0.0;
+		return sinc(x * M_PI) * sinc(x * M_PI / a);
 	}
-	
+
 	/*
 		Lanczos function
 
@@ -148,22 +150,66 @@ class Interpolation_1D
 				0				 ; other
 	*/
 
-	std::tuple < std::vector<double>, std::vector<double>>LanczosInterp(int _NPoints) {
-		std::vector<double> y_outs, x_in;
-		y_outs.reserve(_NPoints);
-		for (double x = -1; x < 1; x += 0.01)
-		{
-			x_in.push_back(x);
-			y_outs.push_back(LanczosFunc(x, 1));
+
+	void LanczosInterp(std::vector< cv::Point2d > points, std::vector<cv::Point2d>& new_points, double a) {
+
+		std::vector<double> extended_x;
+
+		//Generate Points between
+		int extended_xSize = 0;
+
+		extended_x.reserve(points.size() * static_cast<int>(a));
+		for (size_t i = 0; i < points.size() - 1; i++) {
+			double x_min = points[i].x;
+			double x_max = points[i + 1].x;
+
+			extended_x.push_back(x_min);
+
+			for (double t = 0.5; t < 1; t += 0.5) {
+				double x_between = x_min + (x_max - x_min) * t;
+				extended_x.push_back(x_between);
+				extended_xSize++;
+			}
+
+		}
+		extended_x.push_back(points.back().x);
+
+
+		double spacing = points[1].x - points[0].x;
+		//Interpolation
+		for (auto x : extended_x) {
+
+			double sum = 0.0, weight_sum = 0.0;
+
+			double x_index = (x - points[0].x) / spacing;
+
+			int start = std::ceil(x_index - a);
+			int end = std::floor(x_index + a);
+
+			start = std::max(start, 0);
+			end = std::min(end, extended_xSize);
+
+
+			for (int i = start; i <= end; i++) {
+
+				double w = LanczosFunc(x_index - i, a);
+				sum += points[i].y * w;
+				weight_sum += w;
+
+				//std::cout << w << std::endl;
+
+			}
+
+			double interpolated_y = std::abs(sum) < 1e-12 ? 0 : sum / weight_sum;
+			new_points.push_back({ x,interpolated_y });
+
 		}
 
-
-		for (double t = 0; t < _NPoints; t += 0.5) {
-
-		}
-
-		return { x_in, y_outs };
 	}
+
+
+
+
 
 #pragma endregion
 

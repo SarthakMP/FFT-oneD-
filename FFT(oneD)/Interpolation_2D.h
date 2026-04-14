@@ -6,31 +6,76 @@
 #pragma once
 class Interpolation_2d
 {
-
+	Interpolation_1D interp_1d;
+public:
 	//Helper Functions
 	double Interpolation(uchar p1, uchar p2, double t) {
 		return static_cast<double>(p1 + (p2 - p1) * t);
 	}
 
+	double CalculateBetweenPixels(cv::Mat Image, int new_size) {
+		for (size_t y = 0; y < new_size; y++)
+		{
+
+			for (size_t x = 0; x < new_size; x++) {
+
+
+			}
+
+		}
+	}
+
+#pragma region NearestNeighbour 2d
+	cv::Mat NearestNeighbour(cv::Mat in_Image_Gray) {
+		int old_h = in_Image_Gray.rows, old_w = in_Image_Gray.cols;
+
+		cv::Mat New_image = cv::Mat::zeros(2 * old_h, 2 * old_w, CV_8UC1);
+
+		for (int r = 0; r < old_h; r++) {
+			uchar* curr_row = in_Image_Gray.ptr<uchar>(r);
+
+
+			for (int c = 0; c < old_w; c++) {
+
+				int new_r = r * 2;
+				int new_c = c * 2;
+
+
+				New_image.at<uchar>(new_r, new_c) = curr_row[c];
+				New_image.at<uchar>(new_r, new_c + 1) = curr_row[c];
+
+				New_image.at<uchar>(new_r + 1, new_c) = curr_row[c];
+				New_image.at<uchar>(new_r + 1, new_c + 1) = curr_row[c];
+			}
+		}
+
+
+		return New_image;
+
+	}
+
+
+#pragma endregion
+
+/*
+			for (int r = 0; r < h_old; r++) {
+				cv::Vec3b* rowptr = in_Image_Gray.ptr<cv::Vec3b>(r);
+				uchar* dst = in_Image_Gray.ptr<uchar>(r);
+				for (int c = 0; c < w_old; c++) {
+					int r = rowptr[c][0];
+					int g = rowptr[c][1];
+					int b = rowptr[c][2];
+
+					dst[c] = (r + g + b) / 3;
+				}
+			}*/
+
 #pragma region Bilinear
-	
+
 	cv::Mat BilinearInterp(cv::Mat in_Image_Gray) {
 		int h_old = in_Image_Gray.rows, w_old = in_Image_Gray.cols;
 
 		double t = 0.5;
-
-		for (int r = 0; r < h_old; r++) {
-			cv::Vec3b* rowptr = in_Image_Gray.ptr<cv::Vec3b>(r);
-			uchar* dst = in_Image_Gray.ptr<uchar>(r);
-			for (int c = 0; c < w_old; c++) {
-				int r = rowptr[c][0];
-				int g = rowptr[c][1];
-				int b = rowptr[c][2];
-
-				dst[c] = (r + g + b) / 3;
-			}
-		}
-
 		cv::Mat BilinearUpScaled = cv::Mat::zeros(2 * h_old, 2 * w_old, CV_8UC1);
 
 		int upscaled_height = BilinearUpScaled.rows, upscaled_width = BilinearUpScaled.cols;
@@ -77,11 +122,11 @@ class Interpolation_2d
 #pragma endregion
 
 #pragma region Bicubic
-	
-	
+
+
 	cv::Mat BiCubicInterp(cv::Mat in_Image_Gray) {
-		Interpolation_1D interp_1d;
-		
+
+
 		int h_old = in_Image_Gray.rows, w_old = in_Image_Gray.cols;
 
 		cv::Mat new_Img = cv::Mat::zeros(h_old * 2, w_old * 2, CV_8UC1);
@@ -116,7 +161,7 @@ class Interpolation_2d
 					double p[4];
 					int py = std::clamp(r + y0, 0, h_old - 1); //handels the edge/border case the edge pixels are clammped from 0 to the old height of the src
 					uchar* row_ptr = in_Image_Gray.ptr<uchar>(py);
-					
+
 					for (int c = 0; c < 4; c++) {
 						int px = std::clamp(c + x0, 0, w_old - 1); //same clampping here
 
@@ -137,9 +182,17 @@ class Interpolation_2d
 
 		return new_Img;
 	}
-	
+
 #pragma endregion
 
+#pragma region Lanczos Interpolation
+
+	cv::Mat Image = cv::imread("./Images/baby.png", CV_8UC1);
+
+
+
+
+#pragma endregion
 
 
 };
