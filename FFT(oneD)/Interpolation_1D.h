@@ -187,7 +187,7 @@ public:
 			int end = std::floor(x_index + a);
 
 			start = std::max(start, 0);
-			end = std::min(end, extended_xSize);
+			end = std::min(end, (int)points.size() - 1);
 
 
 			for (int i = start; i <= end; i++) {

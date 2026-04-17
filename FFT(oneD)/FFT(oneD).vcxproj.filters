@@ -35,6 +35,12 @@
     <Image Include="Images\x2Bicubic_checkerboard.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="Images\3.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Images\3_interpolated.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Interpolation_1D.h">

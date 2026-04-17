@@ -47,6 +47,7 @@ int main() {
 #pragma region Interpolation
 #define N_Point 10
 	Interpolation_1D interp_1d;
+	Interpolation_2D interp_2d;
 
 #if Switch == 1
 #pragma region Making Point
@@ -81,8 +82,12 @@ int main() {
 
 #pragma region Test Interpolation
 
+	cv::Mat Image = cv::imread("./Images/butterfly.png", CV_8UC1);
+	cv::Mat Lanczos_sampled_img =  interp_2d.Lanczos_Interpolation_2d(Image,3);
 
-
+	cv::imshow("Signal", Lanczos_sampled_img);
+	cv::imwrite("./Images/interpolated.png", Lanczos_sampled_img*255);
+	
 
 #pragma endregion
 

@@ -1,10 +1,11 @@
 #include<vector>
+
 #include"Interpolation_1D.h"
 #include"opencv2/opencv.hpp"
 #define M_PI 3.14159265358979323846
 
 #pragma once
-class Interpolation_2d
+class Interpolation_2D
 {
 	Interpolation_1D interp_1d;
 public:
@@ -13,16 +14,74 @@ public:
 		return static_cast<double>(p1 + (p2 - p1) * t);
 	}
 
-	double CalculateBetweenPixels(cv::Mat Image, int new_size) {
-		for (size_t y = 0; y < new_size; y++)
+	template<typename T>
+	T m_min(T a, T b) {
+		return a < b ? a : b;
+	}
+
+	template<typename T>
+	T m_max(T a, T b) {
+		return a > b ? a : b;
+	}
+
+	std::vector< std::vector <double>> CalculateBetweenPixels(cv::Mat Image, int new_size) { //x2 sampling
+		size_t _orgHeight = Image.rows, _orgWidth = Image.cols;
+
+		std::vector< std::vector <double>> IntermediatePixels;
+		IntermediatePixels.resize(_orgHeight * 2);
+
+		for (size_t n = 0; n < 2 * _orgHeight; n++) {
+			IntermediatePixels[n].resize(_orgWidth * 2);
+		}
+
+
+		for (size_t y = 0; y < _orgHeight; y++)
 		{
 
-			for (size_t x = 0; x < new_size; x++) {
+			double* row_ptr = Image.ptr<double>(y);
 
+			std::vector<double>& new_row = IntermediatePixels[2 * y];
+
+			for (size_t x = 0; x < _orgWidth - 1; x++) {
+
+				double x_min = row_ptr[x];
+				double x_max = row_ptr[x + 1];
+
+				new_row[x] = x_min;
+
+				for (double t = 0.5; t < 1; t += 0.5) {
+					double x_mid = (x_min)+(x_max - x_min) * t;
+					new_row[x] = x_mid;
+				}
+			}
+
+		}
+
+		std::cout << "End of X Start of Y" << std::endl;
+
+		for (size_t y = 1; y < _orgHeight; y++) {
+			double* cur_col_ptr = Image.ptr<double>(y - 1);
+			double* nxt_col_ptr = Image.ptr<double>(y);
+
+			std::vector<double>& new_row = IntermediatePixels[2 * y - 1];
+
+			for (size_t x = 0; x < IntermediatePixels.size(); x++) {
+
+				double y_min = cur_col_ptr[x];
+				double y_max = nxt_col_ptr[x];
+
+				for (double t = 0.5; t < 1; t += 0.5) {
+					double y_mid = (y_min)+(y_max - y_min) * t;
+					new_row[x] = y_mid;
+				}
 
 			}
 
 		}
+
+		std::cout << "new \n Height: " << IntermediatePixels.size() << " \n Width: " << IntermediatePixels[0].size();
+
+		return IntermediatePixels;
 	}
 
 #pragma region NearestNeighbour 2d
@@ -56,19 +115,6 @@ public:
 
 
 #pragma endregion
-
-/*
-			for (int r = 0; r < h_old; r++) {
-				cv::Vec3b* rowptr = in_Image_Gray.ptr<cv::Vec3b>(r);
-				uchar* dst = in_Image_Gray.ptr<uchar>(r);
-				for (int c = 0; c < w_old; c++) {
-					int r = rowptr[c][0];
-					int g = rowptr[c][1];
-					int b = rowptr[c][2];
-
-					dst[c] = (r + g + b) / 3;
-				}
-			}*/
 
 #pragma region Bilinear
 
@@ -187,9 +233,66 @@ public:
 
 #pragma region Lanczos Interpolation
 
-	cv::Mat Image = cv::imread("./Images/baby.png", CV_8UC1);
+	cv::Mat Lanczos_Interpolation_2d(cv::Mat m_Image, double a) {
+
+		cv::Mat img_double;
+		m_Image.convertTo(img_double, CV_64F, 1.0 / 255.0);
+		int _oldHeight = img_double.rows, _oldWidth = img_double.cols;
+
+		int _newHeight = _oldHeight*2, _newWidth = _oldWidth*2;
+		
+		cv::Mat new_image = cv::Mat::zeros(_newHeight, _newWidth, CV_64F);
 
 
+		//Interpolation
+
+		for (size_t y = 0; y < _newHeight; y++) {
+
+			//mapping the y index
+			int y_index = (y+0.5) * ( _oldHeight / (double)_newHeight) -0.5; //Centered the pixel
+
+			double start_y = std::floor(y_index - a);	//Getting the -a neighbour pixel from the current pixel on Y axis
+			double end_y = std::ceil(y_index + a);	//Getting the +a neighbour pixel from the current pixel on Y axis
+			start_y = m_max(start_y, 0.0);	//Clamping if the pixel lands outside the org image to zero
+			end_y = m_min(end_y, (double)_oldHeight - 1);	//Clamping if the pixel lands outside the org image to org height
+
+			double* new_row_ptr = new_image.ptr<double>(y);
+			for (size_t x = 0; x < _newWidth; x++)
+			{
+				double sum = 0.0, w_sum = 0.0;
+
+				//mapping the x index
+				int x_index = (x + 0.5) * ( _oldWidth / (double)_newWidth) - 0.5; //Centered the pixel
+
+				double start_x = std::floor(x_index - a);	//Getting the -a neighbour pixel from the current pixel on X axis
+				double end_x = std::ceil(x_index + a);	//Getting the +a neighbour pixel from the current pixel on X axis
+				start_x = m_max(start_x, 0.0);	//Clamping if the pixel lands outside the org image to zero
+				end_x = m_min(end_x, (double)_oldWidth - 1);	//Clamping if the pixel lands outside the org image to org width
+
+				//performing lanczos interpolation and multiplying the x and y weights
+				for (int i = start_y; i <= end_y; i++) {
+					double wy = interp_1d.LanczosFunc(y_index - i, a); //calculated the near by weight of y
+					
+					for (int j = start_x; j <= end_x; j++) {
+
+						double wx = interp_1d.LanczosFunc(x_index - j, a);//calculated the near by weight of x
+
+						double w = wx * wy; // multiplying both the weight to get the true weight of that pixel
+						sum += img_double.at<double>(i,j) * w;
+						w_sum+= w;
+					}
+				}
+				
+				new_row_ptr[x] = sum/w_sum; // final normalized weight of that pixel
+
+
+			}
+
+		}
+
+
+		return new_image;
+	}
 
 
 #pragma endregion

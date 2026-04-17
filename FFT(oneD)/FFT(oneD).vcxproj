@@ -133,6 +133,8 @@
     <ClCompile Include="main2.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Images\3.png" />
+    <Image Include="Images\3_interpolated.png" />
     <Image Include="Images\baby.png" />
     <Image Include="Images\checkerboard.png" />
     <Image Include="Images\Image1.png" />
